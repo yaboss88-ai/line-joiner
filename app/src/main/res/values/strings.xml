@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LINE 社群批次加入</string>
+    <string name="accessibility_description">自動偵測 LINE 加入社群按鈕並點選。此功能可讓 APP 全自動加入社群,不用手動點按。只在 LINE Joiner 啟動處理時生效。</string>
+</resources>
