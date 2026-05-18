@@ -10,9 +10,9 @@ android {
     defaultConfig {
         applicationId = "com.example.linejoiner"
         minSdk = 24
-targetSdk = 28
-versionCode = 2
-versionName = "1.1"
+targetSdk = 30
+versionCode = 3
+versionName = "1.2"
     }
 
     buildTypes {
