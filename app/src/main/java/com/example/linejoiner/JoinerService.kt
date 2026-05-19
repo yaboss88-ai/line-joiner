@@ -334,22 +334,45 @@ class JoinerService : Service() {
             y = dp(80)
         }
 
-        var initialX = 0
+var initialX = 0
         var initialY = 0
         var touchX = 0f
         var touchY = 0f
+        var touchDownTime = 0L
+        var hasMoved = false
 
         container.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = params.x; initialY = params.y
                     touchX = event.rawX; touchY = event.rawY
+                    touchDownTime = System.currentTimeMillis()
+                    hasMoved = false
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = (initialX - (event.rawX - touchX)).toInt()
-                    params.y = (initialY + (event.rawY - touchY)).toInt()
-                    try { windowManager?.updateViewLayout(container, params) } catch (_: Exception) {}
+                    val dx = event.rawX - touchX
+                    val dy = event.rawY - touchY
+                    if (!hasMoved && (kotlin.math.abs(dx) > dp(10) || kotlin.math.abs(dy) > dp(10))) {
+                        hasMoved = true
+                    }
+                    if (hasMoved) {
+                        params.x = (initialX - dx).toInt()
+                        params.y = (initialY + dy).toInt()
+                        try { windowManager?.updateViewLayout(container, params) } catch (_: Exception) {}
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val elapsed = System.currentTimeMillis() - touchDownTime
+                    if (!hasMoved && elapsed < 500) {
+                        try {
+                            val intent = Intent(this@JoinerService, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            }
+                            startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
                     true
                 }
                 else -> false
