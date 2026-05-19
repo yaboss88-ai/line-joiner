@@ -17,36 +17,25 @@ class LineAutoClickService : AccessibilityService() {
         val JOIN_PROFILE_TEXTS = listOf(
             "建立個人檔案並加入", "建立個人資料並加入", "建立檔案並加入"
         )
-        val JOIN_BUTTON_TEXTS = listOf(
-            "加入", "Join", "참여", "参加"
-        )
-        val CONFIRM_TEXTS = listOf(
-            "確定", "OK", "確認", "확인"
-        )
-        val MULTI_ROOM_TITLE_TEXTS = listOf(
-            "可加入的聊天室", "可加入的聊天室列表"
-        )
-        val NEXT_BUTTON_TEXTS = listOf(
-            "下一步", "Next", "다음", "次へ"
-        )
+        val JOIN_BUTTON_TEXTS = listOf("加入", "Join", "참여", "参加")
+        val CONFIRM_TEXTS = listOf("確定", "OK", "確認", "확인")
+        val MULTI_ROOM_TITLE_TEXTS = listOf("可加入的聊天室", "可加入的聊天室列表")
+        val NEXT_BUTTON_TEXTS = listOf("下一步", "Next", "다음", "次へ")
         val QUESTION_KEYWORDS = listOf(
             "請先回答上方的問題", "請先回答", "回答上方的問題",
             "輸入答案才可送出加入申請"
         )
-        val CHAT_ROOM_KEYWORDS = listOf(
-            "加入聊天室列表", "點選聊天室列表"
-        )
+        val CHAT_ROOM_KEYWORDS = listOf("加入聊天室列表", "點選聊天室列表")
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastClickTime = 0L
     private val CLICK_COOLDOWN_MS = 1500L
     private var clickedFirstRoomFor: String? = null
+    private var debugEventToastShown = false
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        if (!JoinerState.autoClickEnabled.value) return
-        if (!JoinerState.isRunning.value) return
 
         val pkg = event.packageName?.toString() ?: return
         if (pkg != LINE_PACKAGE) return
@@ -56,24 +45,37 @@ class LineAutoClickService : AccessibilityService() {
             return
         }
 
+        if (!debugEventToastShown) {
+            toast("📨 收到 LINE 事件")
+            debugEventToastShown = true
+        }
+
+        if (!JoinerState.autoClickEnabled.value) {
+            toast("⚠️ 自動點按開關關閉")
+            return
+        }
+        if (!JoinerState.isRunning.value) {
+            toast("⚠️ isRunning=false")
+            return
+        }
+
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN_MS) return
 
-        handler.postDelayed({
-            analyzeAndAct()
-        }, 800)
+        handler.postDelayed({ analyzeAndAct() }, 800)
     }
 
     private fun analyzeAndAct() {
-        val root = rootInActiveWindow ?: return
+        val root = rootInActiveWindow ?: run {
+            toast("⚠️ 找不到畫面")
+            return
+        }
 
-        // === 優先級 1: 偵測「需要回答問題」===
         if (containsAnyText(root, QUESTION_KEYWORDS)) {
             JoinerState.autoClickResult.value = AutoClickResult.NEED_ANSWER_QUESTION
             return
         }
 
-        // === 優先級 2: 社群首頁 → 點「建立個人檔案並加入」===
         for (t in JOIN_PROFILE_TEXTS) {
             if (findAndClickByContains(root, t)) {
                 lastClickTime = System.currentTimeMillis()
@@ -82,7 +84,6 @@ class LineAutoClickService : AccessibilityService() {
             }
         }
 
-        // === 優先級 3: 「社群使用小提醒」彈窗 → 點確定 ===
         if (containsAnyText(root, listOf("社群使用小提醒", "禁止事項", "建議事項", "開心使用"))) {
             for (t in CONFIRM_TEXTS) {
                 if (findAndClickByContains(root, t)) {
@@ -93,7 +94,6 @@ class LineAutoClickService : AccessibilityService() {
             }
         }
 
-        // === 優先級 4: 個人檔案頁 → 點右上「加入」===
         if (containsAnyText(root, listOf(
                 "您可以設定要在此社群中使用的暱稱",
                 "此社群中使用的暱稱",
@@ -108,13 +108,11 @@ class LineAutoClickService : AccessibilityService() {
             }
         }
 
-        // === 優先級 5: 多群組選擇頁 → 點第一個 + 下一步 ===
         if (containsAnyText(root, MULTI_ROOM_TITLE_TEXTS)) {
             handleMultiRoomPage(root)
             return
         }
 
-        // === 優先級 6: 偵測「已加入聊天室」===
         if (containsAnyText(root, CHAT_ROOM_KEYWORDS)) {
             JoinerState.autoClickResult.value = AutoClickResult.JOINED_SUCCESS
             JoinerState.joinSuccessDetected.value = true
@@ -222,6 +220,8 @@ class LineAutoClickService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceInstance = this
+        debugEventToastShown = false
+        toast("✓ 自動點按服務已啟動")
     }
 
     override fun onDestroy() {
