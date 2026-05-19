@@ -18,21 +18,25 @@ class LineAutoClickService : AccessibilityService() {
 
         private const val TRIGGER_COOLDOWN_MS = 30_000L
 
-        private const val DELAY_BUTTON_1_MS = 2000L
-        private const val DELAY_BUTTON_2_MS = 5000L
-        private const val DELAY_BUTTON_3_MS = 8000L
+        private const val DELAY_OPENWITHLINE_MS = 2_000L
+        private const val BTN_OPENWITHLINE_X = 0.50f
+        private const val BTN_OPENWITHLINE_Y = 0.78f
 
-        private const val BTN1_X_RATIO = 0.50f
-        private const val BTN1_Y_RATIO = 0.88f
-        private const val BTN2_X_RATIO = 0.93f
-        private const val BTN2_Y_RATIO = 0.07f
-        private const val BTN3_X_RATIO = 0.50f
-        private const val BTN3_Y_RATIO = 0.58f
+        private const val DELAY_JOIN_PROFILE_MS = 6_000L
+        private const val BTN_JOIN_PROFILE_X = 0.50f
+        private const val BTN_JOIN_PROFILE_Y = 0.88f
+
+        private const val DELAY_JOIN_BUTTON_MS = 9_000L
+        private const val BTN_JOIN_X = 0.93f
+        private const val BTN_JOIN_Y = 0.07f
+
+        private const val DELAY_CONFIRM_MS = 12_000L
+        private const val BTN_CONFIRM_X = 0.50f
+        private const val BTN_CONFIRM_Y = 0.58f
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastTriggerTime = 0L
-    private var debugConnectToastShown = false
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
@@ -48,11 +52,23 @@ class LineAutoClickService : AccessibilityService() {
         if (now - lastTriggerTime < TRIGGER_COOLDOWN_MS) return
         lastTriggerTime = now
 
-        toast("✓ 進入 LINE,開始自動加入")
+        toast("✓ 偵測到 LINE,開始 4 連點")
 
-        handler.postDelayed({ clickAtRatio(BTN1_X_RATIO, BTN1_Y_RATIO, "建立個人檔案並加入") }, DELAY_BUTTON_1_MS)
-        handler.postDelayed({ clickAtRatio(BTN2_X_RATIO, BTN2_Y_RATIO, "加入(右上)") }, DELAY_BUTTON_2_MS)
-        handler.postDelayed({ clickAtRatio(BTN3_X_RATIO, BTN3_Y_RATIO, "確定") }, DELAY_BUTTON_3_MS)
+        handler.postDelayed({
+            clickAtRatio(BTN_OPENWITHLINE_X, BTN_OPENWITHLINE_Y, "以LINE開啟")
+        }, DELAY_OPENWITHLINE_MS)
+
+        handler.postDelayed({
+            clickAtRatio(BTN_JOIN_PROFILE_X, BTN_JOIN_PROFILE_Y, "建立個人檔案並加入")
+        }, DELAY_JOIN_PROFILE_MS)
+
+        handler.postDelayed({
+            clickAtRatio(BTN_JOIN_X, BTN_JOIN_Y, "加入(右上)")
+        }, DELAY_JOIN_BUTTON_MS)
+
+        handler.postDelayed({
+            clickAtRatio(BTN_CONFIRM_X, BTN_CONFIRM_Y, "確定")
+        }, DELAY_CONFIRM_MS)
     }
 
     private fun clickAtRatio(xRatio: Float, yRatio: Float, label: String) {
@@ -72,7 +88,7 @@ class LineAutoClickService : AccessibilityService() {
     private fun performClickAt(x: Float, y: Float, label: String) {
         val path = Path()
         path.moveTo(x, y)
-        val stroke = GestureDescription.StrokeDescription(path, 0, 50)
+        val stroke = GestureDescription.StrokeDescription(path, 0, 60)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
 
         val ok = dispatchGesture(gesture, object : GestureResultCallback() {
@@ -85,7 +101,7 @@ class LineAutoClickService : AccessibilityService() {
         }, null)
 
         if (!ok) {
-            toast("⚠️ 無法派送手勢")
+            toast("⚠️ 派送手勢失敗")
         }
     }
 
@@ -104,10 +120,7 @@ class LineAutoClickService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceInstance = this
-        if (!debugConnectToastShown) {
-            toast("✓ 自動點按服務已啟動(座標版)")
-            debugConnectToastShown = true
-        }
+        toast("✓ 自動點按服務已啟動")
     }
 
     override fun onDestroy() {
