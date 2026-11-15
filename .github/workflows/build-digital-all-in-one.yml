@@ -2,6 +2,8 @@ name: Build Digital Marketer All-in-One APK
 on:
   push:
     branches: [digital-marketer-all-in-one-v2]
+  pull_request:
+    branches: [main]
 permissions:
   contents: read
 jobs:
